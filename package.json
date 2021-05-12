@@ -1,0 +1,21 @@
+{
+  "name": "react-use-dependency",
+  "version": "0.1.0",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --declaration --emitDeclarationOnly --project . --outDir .",
+    "test": "jest"
+  },
+  "peerDependencies": {
+    "react": "^17.0.2"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^5.12.0",
+    "@testing-library/react": "^11.2.6",
+    "@testing-library/react-hooks": "^5.1.2",
+    "@testing-library/user-event": "^13.1.5",
+    "ts-jest": "^26.5.5",
+    "typescript": "^4.2.4"
+  }
+}
