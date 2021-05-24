@@ -12,7 +12,7 @@
     "noFallthroughCasesInSwitch": true,
     "resolveJsonModule": true,
     "noImplicitAny": true,
-    "module": "esnext",
+    "module": "commonjs",
     "jsx": "react-jsx"
   },
   "include": [
