@@ -20,7 +20,30 @@ test.each(TEST_KEY_NAMES)('useDependency should throw an error if it is not set'
 
   const { result } = renderHook(() => useDependency<number>(key), { wrapper })
 
-  expect(result.error).toEqual(Error(`The dependency "${key}" is not set`))
+  expect(result.error).toEqual(new Error(dedent`
+    \`useDependency\` was called with a dependency key which is not set: "${key}"
+
+    To fix, pass a dependency for the key "${key}" into the DependencyProvider higher order component in your app setup. For example:
+
+    \`\`\`
+    import React from 'react'
+    import ReactDOM from 'react-dom'
+    import { DependencyProvider } from 'react-use-dependency'
+
+    const dependencies = {
+      ${key}: /* something */
+    }
+
+    ReactDOM.render(
+      <React.StrictMode>
+        <DependencyProvider value={dependencies}>
+          <App />
+        </DependencyProvider>
+      </React.StrictMode>,
+      document.getElementById('root')
+    )
+    \`\`\`
+  `))
 })
 
 test('useHook should call the dependency if it is set', () => {
@@ -52,7 +75,30 @@ test.each(TEST_KEY_NAMES)('useHook should throw an error if it is not set', key 
 
   const { result } = renderHook(() => useHook<() => number>(key), { wrapper })
 
-  expect(result.error).toEqual(Error(`The dependency "${key}" is not set`))
+  expect(result.error).toEqual(Error(dedent`
+    \`useHook\` was called with a dependency key which is not set: "${key}"
+
+    To fix, pass a dependency for the key "${key}" into the DependencyProvider higher order component in your app setup. For example:
+
+    \`\`\`
+    import React from 'react'
+    import ReactDOM from 'react-dom'
+    import { DependencyProvider } from 'react-use-dependency'
+
+    const dependencies = {
+      ${key}: /* something */
+    }
+
+    ReactDOM.render(
+      <React.StrictMode>
+        <DependencyProvider value={dependencies}>
+          <App />
+        </DependencyProvider>
+      </React.StrictMode>,
+      document.getElementById('root')
+    )
+    \`\`\`
+  `))
 })
 
 describe('with lazy dependencies', () => {
@@ -142,7 +188,7 @@ describe('with async dependencies', () => {
     const { result } = renderHook(() => useHook(key), { wrapper })
 
     expect(result.error).toEqual(new Error(dedent`
-      \`useHook\` was called with a dependency which has no \`default\` value.
+      \`useHook\` resolved a dependency which has no \`default\` value.
 
       This causes an error because it's generally easier to specify a default value
       in the dependency configuration than it is to handle unexpected \`null\` values
