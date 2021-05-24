@@ -4,7 +4,7 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsc --declaration --emitDeclarationOnly --project . --outDir .",
+    "build": "tsc --declaration --project . --outDir dist",
     "test": "jest"
   },
   "peerDependencies": {
