@@ -1,3 +1,4 @@
+import React from 'react'
 import { renderHook } from '@testing-library/react-hooks'
 import { dedent } from 'ts-dedent'
 import { DependencyProvider, useDependency, useHook } from './'
@@ -176,6 +177,20 @@ describe('with async dependencies', () => {
 
     expect(result.current).toEqual(null)
     await waitForNextUpdate()
+  })
+
+  test('useDependency should special case async import functions', async () => {
+    const wrapper = createWrapper({
+      react: {
+        load: () => import('react'),
+      },
+    })
+
+    const { result, waitForNextUpdate } = renderHook(() => useDependency<any>('react'), { wrapper })
+
+    await waitForNextUpdate()
+
+    expect(result.current).toEqual(React)
   })
 
   test.each(TEST_KEY_NAMES)('useHook should throw an error if no default value is given', async key => {

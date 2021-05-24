@@ -83,7 +83,13 @@ function useDependencyInternal<T>(name: string, apiFunction: string): T | null {
 
     const value = dynamic.load()
     if (value instanceof Promise) {
-      value.then((result: T) => setLoaded(result))
+      value.then((result: T | { default: T }) => {
+        if (typeof result === 'object' && 'default' in result) {
+          setLoaded(result.default)
+        } else {
+          setLoaded(result)
+        }
+      })
     } else {
       setLoaded(value)
     }
