@@ -1,11 +1,11 @@
-import { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useState } from 'react'
 import { dedent } from 'ts-dedent'
 
 type ArgumentTypes<F extends Function> = F extends (...args: infer A) => any ? A : never;
 
 export type DependencyMap = { [key: string]: any }
 export type DependencyConfig<T> = {
-  load: () => T | Promise<T>
+  load: () => T | Promise<T> | Promise<{ default: T }>
   default?: T
 }
 
@@ -14,13 +14,22 @@ const context = createContext({} as DependencyMap)
 export const DependencyProvider = context.Provider
 
 export function useDependency<T>(name: string): T | null {
-  return useDependencyInternal(name, 'useDependency')
+  const dependency = useDependencyInContext<T>(name, 'useDependency')
+  return useResolvedDependency(dependency)
+}
+
+export function useComponent<T extends React.FC>(name: string): T | (() => null) {
+  const dependency = useDependencyInContext<T>(name, 'useComponent')
+  const resolved = useResolvedDependency(dependency)
+
+  return resolved || (() => null)
 }
 
 export function useHook<T extends (...args: any) => any>(name: string, ...args: ArgumentTypes<T>): ReturnType<T> {
-  const dependency = useDependencyInternal<T>(name, 'useHook')
+  const dependency = useDependencyInContext<T>(name, 'useHook')
+  const resolved = useResolvedDependency(dependency)
 
-  if (dependency === null) throw new Error(dedent`
+  if (resolved === null) throw new Error(dedent`
     \`useHook\` resolved a dependency which has no \`default\` value.
 
     This causes an error because it's generally easier to specify a default value
@@ -33,24 +42,24 @@ export function useHook<T extends (...args: any) => any>(name: string, ...args: 
     const dependencies = {
       ${name}: {
         load: async () => import('./hooks/example'),
-        default: { loading: true },
+        default: () => ({ loading: true }),
       }
     }
     \`\`\`
   `)
 
-  return dependency(...args)
+  return resolved(...args)
 }
 
-function useDependencyInternal<T>(name: string, apiFunction: string): T | null {
+function useDependencyInContext<T>(name: string, apiFunction: string): T | DependencyConfig<T> {
   const dependencies = useContext(context)
-  const [loaded, setLoaded] = useState(null as T | null)
 
   const exists = name in dependencies
   if (!exists) throw new Error(dedent`
     \`${apiFunction}\` was called with a dependency key which is not set: "${name}"
 
-    To fix, pass a dependency for the key "${name}" into the DependencyProvider higher order component in your app setup. For example:
+    To fix, pass a dependency for the key "${name}" into the DependencyProvider
+    higher order component in your app setup. For example:
 
     \`\`\`
     import React from 'react'
@@ -72,11 +81,15 @@ function useDependencyInternal<T>(name: string, apiFunction: string): T | null {
     \`\`\`
   `)
 
-  const dependency = dependencies[name] as T | DependencyConfig<T>
+  return dependencies[name] as T | DependencyConfig<T>
+}
+
+function useResolvedDependency<T>(dependency: T | DependencyConfig<T>): T | null {
+  const [loaded, setLoaded] = useState(null as T | null)
+
   const resolved = dependency as T
   const dynamic = dependency as DependencyConfig<T>
-  const isDynamic = typeof dependency === 'object'
-    && 'load' in dependency
+  const isDynamic = isDependencyConfig(dependency)
 
   useEffect(() => {
     if (!isDynamic) return
@@ -100,4 +113,8 @@ function useDependencyInternal<T>(name: string, apiFunction: string): T | null {
   } else {
     return resolved
   }
+}
+
+const isDependencyConfig = <T>(value: T | DependencyConfig<T>) => {
+  return typeof value === 'object' && 'load' in value
 }

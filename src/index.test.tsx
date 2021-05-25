@@ -1,7 +1,7 @@
 import React from 'react'
 import { renderHook } from '@testing-library/react-hooks'
 import { dedent } from 'ts-dedent'
-import { DependencyProvider, useDependency, useHook } from './'
+import { DependencyProvider, useDependency, useHook, useComponent } from './'
 
 const TEST_KEY_NAMES = ['random', 'whatever', Math.random().toString()]
 const createWrapper = (dependencies: { [key: string]: any }): React.FC => ({ children }) =>
@@ -24,7 +24,8 @@ test.each(TEST_KEY_NAMES)('useDependency should throw an error if it is not set'
   expect(result.error).toEqual(new Error(dedent`
     \`useDependency\` was called with a dependency key which is not set: "${key}"
 
-    To fix, pass a dependency for the key "${key}" into the DependencyProvider higher order component in your app setup. For example:
+    To fix, pass a dependency for the key "${key}" into the DependencyProvider
+    higher order component in your app setup. For example:
 
     \`\`\`
     import React from 'react'
@@ -79,7 +80,49 @@ test.each(TEST_KEY_NAMES)('useHook should throw an error if it is not set', key 
   expect(result.error).toEqual(Error(dedent`
     \`useHook\` was called with a dependency key which is not set: "${key}"
 
-    To fix, pass a dependency for the key "${key}" into the DependencyProvider higher order component in your app setup. For example:
+    To fix, pass a dependency for the key "${key}" into the DependencyProvider
+    higher order component in your app setup. For example:
+
+    \`\`\`
+    import React from 'react'
+    import ReactDOM from 'react-dom'
+    import { DependencyProvider } from 'react-use-dependency'
+
+    const dependencies = {
+      ${key}: /* something */
+    }
+
+    ReactDOM.render(
+      <React.StrictMode>
+        <DependencyProvider value={dependencies}>
+          <App />
+        </DependencyProvider>
+      </React.StrictMode>,
+      document.getElementById('root')
+    )
+    \`\`\`
+  `))
+})
+
+test('useComponent should return the dependency if it is set', () => {
+  const ExampleComponent = () => <span>Hello world</span>
+  const wrapper = createWrapper({ Example: ExampleComponent })
+
+  const { result } = renderHook(() => useComponent<React.FC>('Example'), { wrapper })
+
+  expect(result.current).toEqual(ExampleComponent)
+})
+
+test.each(TEST_KEY_NAMES)('useComponent should throw an error if it is not set', key => {
+  const wrapper = createWrapper({})
+
+  const { result } = renderHook(() => useComponent<React.FC>(key), { wrapper })
+
+  expect(result.error).toEqual(new Error(dedent`
+    \`useComponent\` was called with a dependency key which is not set: "${key}"
+
+    To fix, pass a dependency for the key "${key}" into the DependencyProvider
+    higher order component in your app setup. For example:
 
     \`\`\`
     import React from 'react'
@@ -215,10 +258,39 @@ describe('with async dependencies', () => {
       const dependencies = {
         ${key}: {
           load: async () => import('./hooks/example'),
-          default: { loading: true },
+          default: () => ({ loading: true }),
         }
       }
       \`\`\`
     `))
+  })
+
+  test.each(TEST_KEY_NAMES)('useComponent should return a null component initially if no default value is given', async key => {
+    const Component = () => <span>Hello World</span>
+    const wrapper = createWrapper({
+      [key]: {
+        load: async () => ({ default: Component }),
+      },
+    })
+
+    const { result, waitForNextUpdate } = renderHook(() => useComponent<any>(key), { wrapper })
+
+    expect(result.current()).toEqual(null)
+    await waitForNextUpdate()
+  })
+
+  test.each(TEST_KEY_NAMES)('useComponent should return the loaded component eventually', async key => {
+    const Component = () => () => <span>Hello World</span>
+    const wrapper = createWrapper({
+      [key]: {
+        load: async () => ({ default: Component }),
+      },
+    })
+
+    const { result, waitForNextUpdate } = renderHook(() => useComponent<any>(key), { wrapper })
+
+    await waitForNextUpdate()
+
+    expect(result.current()).toEqual(<span>Hello World</span>)
   })
 })
